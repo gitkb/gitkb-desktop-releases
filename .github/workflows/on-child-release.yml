@@ -14,24 +14,20 @@ jobs:
     outputs:
       tag: ${{ steps.info.outputs.tag }}
       version: ${{ steps.info.outputs.version }}
-
     steps:
       - name: Extract release info
         id: info
         run: |
           TAG="${{ github.event.client_payload.tag }}"
-          VERSION="${{ github.event.client_payload.version }}"
           if [ -z "$TAG" ]; then
             echo "::error::Missing client_payload.tag"
             exit 1
           fi
-          if [ -z "$VERSION" ]; then
-            VERSION="${TAG#v}"
-          fi
+          VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Download assets from private Desktop release
+      - name: Download assets from private release
         env:
           GH_TOKEN: ${{ secrets.DESKTOP_SOURCE_REPO_PAT }}
         run: |
@@ -55,7 +51,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.info.outputs.tag }}
-          name: GitKB Desktop ${{ steps.info.outputs.tag }} public beta
+          name: ${{ steps.info.outputs.tag }}
           prerelease: true
           body: |
             GitKB Desktop ${{ steps.info.outputs.tag }} public beta.

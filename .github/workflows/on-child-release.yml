@@ -1,0 +1,83 @@
+name: Mirror Release
+
+on:
+  repository_dispatch:
+    types: [child-release-created]
+
+permissions:
+  contents: write
+
+jobs:
+  mirror-release:
+    name: Mirror Desktop Release Assets
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.info.outputs.tag }}
+      version: ${{ steps.info.outputs.version }}
+
+    steps:
+      - name: Extract release info
+        id: info
+        run: |
+          TAG="${{ github.event.client_payload.tag }}"
+          VERSION="${{ github.event.client_payload.version }}"
+          if [ -z "$TAG" ]; then
+            echo "::error::Missing client_payload.tag"
+            exit 1
+          fi
+          if [ -z "$VERSION" ]; then
+            VERSION="${TAG#v}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download assets from private Desktop release
+        env:
+          GH_TOKEN: ${{ secrets.DESKTOP_SOURCE_REPO_PAT }}
+        run: |
+          mkdir -p release
+          gh release download "${{ steps.info.outputs.tag }}" \
+            --repo gitkb/harmony-desktop \
+            --pattern "GitKB_universal.dmg" \
+            --pattern "GitKB_universal.dmg.sha256" \
+            --pattern "checksums.txt" \
+            --dir release
+
+      - name: Verify expected assets
+        run: |
+          test -f release/GitKB_universal.dmg
+          test -f release/GitKB_universal.dmg.sha256
+          test -f release/checksums.txt
+          cd release
+          shasum -a 256 -c GitKB_universal.dmg.sha256
+
+      - name: Create public release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.info.outputs.tag }}
+          name: GitKB Desktop ${{ steps.info.outputs.tag }} public beta
+          prerelease: true
+          body: |
+            GitKB Desktop ${{ steps.info.outputs.tag }} public beta.
+
+            Download `GitKB_universal.dmg` for macOS. The app is free to download and use locally.
+
+            Requirements:
+            - macOS 10.15 or newer
+            - external `git-kb` CLI installed from Homebrew or the install script
+
+            Install the CLI:
+            ```bash
+            brew install gitkb/tap/gitkb
+            ```
+
+            Or:
+            ```bash
+            curl -fsSL https://get.gitkb.com/install.sh | bash
+            ```
+
+            If this beta is unsigned, macOS may require opening it from Finder with Control-click > Open.
+          files: release/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

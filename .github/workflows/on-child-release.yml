@@ -57,7 +57,7 @@ jobs:
         with:
           tag_name: ${{ steps.info.outputs.tag }}
           name: ${{ steps.info.outputs.tag }}
-          prerelease: true
+          prerelease: false
           body: |
             GitKB Desktop ${{ steps.info.outputs.tag }} public beta.
 

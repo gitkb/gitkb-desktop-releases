@@ -41,16 +41,23 @@ jobs:
             --repo gitkb/harmony-desktop \
             --pattern "GitKB_universal.dmg" \
             --pattern "GitKB_universal.dmg.sha256" \
+            --pattern "GitKB_linux_*" \
             --pattern "checksums.txt" \
             --dir release
 
       - name: Verify expected assets
         run: |
-          test -f release/GitKB_universal.dmg
-          test -f release/GitKB_universal.dmg.sha256
+          set -euo pipefail
           test -f release/checksums.txt
           cd release
-          shasum -a 256 -c GitKB_universal.dmg.sha256
+          for asset in GitKB_universal.dmg \
+            GitKB_linux_x86_64.deb GitKB_linux_x86_64.rpm GitKB_linux_x86_64.AppImage \
+            GitKB_linux_aarch64.deb GitKB_linux_aarch64.rpm GitKB_linux_aarch64.AppImage
+          do
+            test -f "$asset"
+            test -f "$asset.sha256"
+            shasum -a 256 -c "$asset.sha256"
+          done
 
       - name: Create public release
         uses: softprops/action-gh-release@v2
@@ -61,10 +68,18 @@ jobs:
           body: |
             GitKB Desktop ${{ steps.info.outputs.tag }} public beta.
 
-            Download `GitKB_universal.dmg` for macOS. The app is free to download and use locally.
+            The app is free to download and use locally.
+
+            | System | Download |
+            |---|---|
+            | macOS 10.15 or newer | `GitKB_universal.dmg` |
+            | Debian, Ubuntu | `GitKB_linux_x86_64.deb` or `GitKB_linux_aarch64.deb` (`sudo apt install ./GitKB_linux_<arch>.deb`) |
+            | Fedora, openSUSE | `GitKB_linux_x86_64.rpm` or `GitKB_linux_aarch64.rpm` (`sudo dnf install ./GitKB_linux_<arch>.rpm`) |
+            | Any Linux, including Arch | `GitKB_linux_x86_64.AppImage` or `GitKB_linux_aarch64.AppImage` (`chmod +x` it, then run it) |
+
+            Linux packages need WebKitGTK 4.1, which the deb and rpm install for you. The AppImage runs through X11, so Wayland desktops need XWayland (GNOME, KDE and Hyprland include it).
 
             Requirements:
-            - macOS 10.15 or newer
             - external `git-kb` CLI installed from Homebrew or the install script
 
             Install the CLI:

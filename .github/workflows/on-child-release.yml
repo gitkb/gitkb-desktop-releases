@@ -36,6 +36,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.DESKTOP_SOURCE_REPO_PAT }}
         run: |
+          set -euo pipefail
           mkdir -p release
           gh release download "${{ steps.info.outputs.tag }}" \
             --repo gitkb/harmony-desktop \
@@ -43,6 +44,14 @@ jobs:
             --pattern "GitKB_universal.dmg.sha256" \
             --pattern "checksums.txt" \
             --dir release
+          has_adapters="$(gh api repos/gitkb/harmony-desktop/releases/tags/${{ steps.info.outputs.tag }} --jq 'any(.assets[]; .name == "GitKB_operator-adapters.tar.gz")')"
+          if [ "$has_adapters" = true ]; then
+            gh release download "${{ steps.info.outputs.tag }}" \
+              --repo gitkb/harmony-desktop \
+              --pattern "GitKB_operator-adapters.tar.gz" \
+              --pattern "GitKB_operator-adapters.tar.gz.sha256" \
+              --dir release
+          fi
 
       - name: Verify expected assets
         run: |
@@ -51,6 +60,7 @@ jobs:
           test -f release/checksums.txt
           cd release
           shasum -a 256 -c GitKB_universal.dmg.sha256
+          shasum -a 256 -c checksums.txt
 
       - name: Create public release
         uses: softprops/action-gh-release@v2

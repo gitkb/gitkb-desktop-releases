@@ -32,9 +32,20 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # gitkb/harmony-desktop is private: the dependency-updates App's token, contents read on it alone.
+      - name: Token to read gitkb/harmony-desktop
+        id: desktop-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.DEPENDENCY_UPDATES_APP_ID }}
+          private-key: ${{ secrets.DEPENDENCY_UPDATES_APP_KEY }}
+          owner: gitkb
+          repositories: harmony-desktop
+          permission-contents: read
+
       - name: Download assets from private release
         env:
-          GH_TOKEN: ${{ secrets.DESKTOP_SOURCE_REPO_PAT }}
+          GH_TOKEN: ${{ steps.desktop-token.outputs.token }}
         run: |
           mkdir -p release
           gh release download "${{ steps.info.outputs.tag }}" \
